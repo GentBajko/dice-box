@@ -17,8 +17,9 @@ const defaultOptions = {
 	offscreen: true, // use offscreen canvas browser feature for performance improvements - will fallback to false based on feature detection
 	assetPath: '/assets/dice-box/', // path to 'ammo', 'themes' folders and web workers
 	// origin: location.origin,
-	origin: typeof window !== "undefined" ? window.location.origin : "",
-	suspendSimulation: false
+        origin: typeof window !== "undefined" ? window.location.origin : "",
+        suspendSimulation: false,
+        forcedValue: null
 }
 
 class WorldFacade {
@@ -193,14 +194,20 @@ class WorldFacade {
 		this.resizeWorld()
 
 		// now that DiceWorld is ready we can attach our callbacks
-		this.#DiceWorld.onRollResult = (result) => {
-			const die = this.rollDiceData[result.rollId]
-			const group = this.rollGroupData[die.groupId]
-			const collection = this.rollCollectionData[die.collectionId]
+                this.#DiceWorld.onRollResult = (result) => {
+                        const die = this.rollDiceData[result.rollId]
+                        const group = this.rollGroupData[die.groupId]
+                        const collection = this.rollCollectionData[die.collectionId]
 
-			// map die results back to our rollData
-			// since all rolls are references to this.rollDiceDate the values will be added to those objects
-			group.rolls[die.rollId].value = result.value
+                        if(typeof this.config.forcedValue === 'number'){
+                                const max = Number.isInteger(die.sides) ? die.sides : parseInt(die.sides.toString().replace(/\D/g,''))
+                                const min = die.sides === 'fate' ? -1 : 1
+                                result.value = Math.min(max, Math.max(min, this.config.forcedValue))
+                        }
+
+                        // map die results back to our rollData
+                        // since all rolls are references to this.rollDiceDate the values will be added to those objects
+                        group.rolls[die.rollId].value = result.value
 
 			// increment the completed roll count for this group
 			collection.completedRolls++
@@ -628,24 +635,31 @@ class WorldFacade {
 				collection.rolls.push(this.rollDiceData[rollId])
 
 				// TODO: eliminate the 'd' for more flexible naming such as 'fate' - ensure numbers are strings
-				if (roll.sides === 'fate' && (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || roll.sides === 'fate' && !this.#webgl_support){
-					console.warn(`fate die unavailable in '${theme}' theme. Using fallback.`)
-					const min = -1
-					const max = 1
-					roll.value = Random.range(min,max)
-					this.#DiceWorld.addNonDie(roll)
-				} else if(this.config.suspendSimulation || (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || !this.#webgl_support){
-					// check if the requested roll is available in the current theme, if not then use crypto fallback
-					const warning = 
-					!this.#webgl_support 
-						? `This browser does not support webGL. Using random number fallback.` 
-						: this.config.suspendSimulation 
-							? "3D simulation suspended. Using fallback." 
-							: `${roll.sides} die unavailable in '${theme}' theme. Using fallback.`
-					console.warn(warning)
-					const max = Number.isInteger(roll.sides) ? roll.sides : parseInt(roll.sides.replace(/\D/g,''))
-					roll.value = Random.range(1, max)
-					this.#DiceWorld.addNonDie(roll)
+                                if (roll.sides === 'fate' && (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || roll.sides === 'fate' && !this.#webgl_support){
+                                        console.warn(`fate die unavailable in '${theme}' theme. Using fallback.`)
+                                        const min = -1
+                                        const max = 1
+                                        roll.value = typeof this.config.forcedValue === 'number'
+                                                ? Math.min(max, Math.max(min, this.config.forcedValue))
+                                                : Random.range(min,max)
+                                        this.#DiceWorld.addNonDie(roll)
+                                } else if(this.config.suspendSimulation || (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || !this.#webgl_support){
+                                        // check if the requested roll is available in the current theme, if not then use crypto fallback
+                                        const warning =
+                                        !this.#webgl_support
+                                                ? `This browser does not support webGL. Using random number fallback.`
+                                                : this.config.suspendSimulation
+                                                        ? "3D simulation suspended. Using fallback."
+                                                        : `${roll.sides} die unavailable in '${theme}' theme. Using fallback.`
+                                        console.warn(warning)
+                                        const max = Number.isInteger(roll.sides) ? roll.sides : parseInt(roll.sides.replace(/\D/g,''))
+                                        if(typeof this.config.forcedValue === 'number'){
+                                                const min = 1
+                                                roll.value = Math.min(max, Math.max(min, this.config.forcedValue))
+                                        } else {
+                                                roll.value = Random.range(1, max)
+                                        }
+                                        this.#DiceWorld.addNonDie(roll)
 				} else {
 					let extendedTheme
 					if(diceExtra.includes(dieType)) {
