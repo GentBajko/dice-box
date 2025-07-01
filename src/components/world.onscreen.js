@@ -224,12 +224,13 @@ class WorldOnscreen {
 		if(this.#engine.activeRenderLoops.length === 0) {
 			this.render(false)
 		}
-		const {id, value, ...rest} = die
-		const newDie = {
-			id,
-			value,
-			config: rest
-		}
+                const {id, value, forceResult, ...rest} = die
+                const newDie = {
+                        id,
+                        value,
+                        forceResult,
+                        config: rest
+                }
 		this.#dieCache[id] = newDie
 		
 		// double timeout to ensure any real dice have a chance to queue up and rollResults isn't triggered right away
@@ -384,7 +385,10 @@ class WorldOnscreen {
 		die.asleep = true
 	
 		// get the roll result for this die
-		await Dice.getRollResult(die, this.#scene)
+                await Dice.getRollResult(die, this.#scene)
+                if(die.forceResult !== undefined){
+                        die.value = die.forceResult
+                }
 	
 		if(die.d10Instance || die.dieParent) {
 			// if one of the pair is asleep and the other isn't then it falls through without getting the roll result
@@ -399,7 +403,10 @@ class WorldOnscreen {
 				// save the original value
 				d100.rawValue = d100.value
 
-				d100.value = d100.value + d10.value
+                                d100.value = d100.value + d10.value
+                                if(d100.forceResult !== undefined){
+                                        d100.value = d100.forceResult
+                                }
 	
 				this.onRollResult({
 					rollId: d100.config.rollId,

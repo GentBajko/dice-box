@@ -41,12 +41,13 @@ class WorldNone {
 	addNonDie(die){
 		console.log('die', die)
 		clearTimeout(this.#rollCompleteTimer)
-		const {id, value, ...rest} = die
-		const newDie = {
-			id,
-			value,
-			config: rest
-		}
+                const {id, value, forceResult, ...rest} = die
+                const newDie = {
+                        id,
+                        value,
+                        forceResult,
+                        config: rest
+                }
 		this.#dieCache[id] = newDie
 		
 		this.#dieRollTimer.push(setTimeout(() => {
@@ -110,7 +111,10 @@ class WorldNone {
 		die.asleep = true
 	
 		// get the roll result for this die
-		await Dice.getRollResult(die)
+                await Dice.getRollResult(die)
+                if(die.forceResult !== undefined){
+                        die.value = die.forceResult
+                }
 	
 		if(die.d10Instance || die.dieParent) {
 			// if one of the pair is asleep and the other isn't then it falls through without getting the roll result
@@ -118,11 +122,14 @@ class WorldNone {
 			if(die?.d10Instance?.asleep || die?.dieParent?.asleep) {
 				const d100 = die.config.sides === 100 ? die : die.dieParent
 				const d10 = die.config.sides === 10 ? die : die.d10Instance
-				if (d10.value === 0 && d100.value === 0) {
-					d100.value = 100; // 00 + 0 is 100 on a d100
-				} else {
-					d100.value = d100.value + d10.value
-				}
+                                if (d10.value === 0 && d100.value === 0) {
+                                        d100.value = 100
+                                } else {
+                                        d100.value = d100.value + d10.value
+                                }
+                                if(d100.forceResult !== undefined){
+                                        d100.value = d100.forceResult
+                                }
 	
 				this.onRollResult({
 					rollId: d100.config.rollId,

@@ -26,6 +26,7 @@ class Dice {
   asleep = false
   constructor(options, scene) {
     this.config = {...defaultOptions, ...options}
+    this.forceResult = options.forceResult
     this.id = this.config.id !== undefined ? this.config.id : Date.now()
     this.sides = this.config.sides
 		this.dieType = this.config.dieType
