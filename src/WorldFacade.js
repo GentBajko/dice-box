@@ -460,7 +460,7 @@ class WorldFacade {
 	}
 
 	// TODO: pass data with roll - such as roll name. Passed back at the end in the results
-	roll(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true} = {}) {
+        roll(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true, desiredValue} = {}) {
 		// note: to add to a roll on screen use .add method
 		// reset the offscreen worker and physics worker with each new roll
 		this.clear()
@@ -474,14 +474,21 @@ class WorldFacade {
 			newStartPoint
 		})
 
-		const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
+                const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
+                if(desiredValue !== undefined){
+                        parsedNotation.forEach(n => {
+                                if(n.value === undefined){
+                                        n.value = desiredValue
+                                }
+                        })
+                }
 		this.#makeRoll(parsedNotation, collectionId)
 
 		// returns a Promise that is resolved in onRollComplete
 		return this.rollCollectionData[collectionId].promise
 	}
 
-  add(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true} = {}) {
+  add(notation, {theme = this.config.theme, themeColor = this.config.themeColor, newStartPoint = true, desiredValue} = {}) {
 
 		const collectionId = this.#collectionIndex++
 
@@ -493,7 +500,14 @@ class WorldFacade {
 			newStartPoint
 		})
 		
-		const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
+                const parsedNotation = this.createNotationArray(notation, this.themesLoadedData[theme].diceAvailable)
+                if(desiredValue !== undefined){
+                        parsedNotation.forEach(n => {
+                                if(n.value === undefined){
+                                        n.value = desiredValue
+                                }
+                        })
+                }
 		this.#makeRoll(parsedNotation, collectionId)
 
 		// returns a Promise that is resolved in onRollComplete
@@ -610,18 +624,19 @@ class WorldFacade {
           notation.sides =  parseInt(notation.sides.replace('d', ''))
         }
 
-				const roll = {
-					sides: notation.sides,
-					data: notation.data,
-					dieType,
-					groupId: index,
-					collectionId: collection.id,
-					rollId,
-					id,
-					theme,
-					themeColor,
-					meshName
-				}
+                                const roll = {
+                                        sides: notation.sides,
+                                        data: notation.data,
+                                        dieType,
+                                        groupId: index,
+                                        collectionId: collection.id,
+                                        rollId,
+                                        id,
+                                        theme,
+                                        themeColor,
+                                        meshName,
+                                        forceResult: notation.value
+                                }
 
 				rolls[rollId] = roll
 				this.rollDiceData[rollId] = roll
@@ -630,11 +645,11 @@ class WorldFacade {
 				// TODO: eliminate the 'd' for more flexible naming such as 'fate' - ensure numbers are strings
 				if (roll.sides === 'fate' && (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || roll.sides === 'fate' && !this.#webgl_support){
 					console.warn(`fate die unavailable in '${theme}' theme. Using fallback.`)
-					const min = -1
-					const max = 1
-					roll.value = Random.range(min,max)
-					this.#DiceWorld.addNonDie(roll)
-				} else if(this.config.suspendSimulation || (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || !this.#webgl_support){
+                                        const min = -1
+                                        const max = 1
+                                        roll.value = notation.value ?? Random.range(min,max)
+                                        this.#DiceWorld.addNonDie(roll)
+                                } else if(this.config.suspendSimulation || (!diceAvailable.includes(dieType) && !diceExtra.includes(dieType)) || !this.#webgl_support){
 					// check if the requested roll is available in the current theme, if not then use crypto fallback
 					const warning = 
 					!this.#webgl_support 
@@ -643,10 +658,10 @@ class WorldFacade {
 							? "3D simulation suspended. Using fallback." 
 							: `${roll.sides} die unavailable in '${theme}' theme. Using fallback.`
 					console.warn(warning)
-					const max = Number.isInteger(roll.sides) ? roll.sides : parseInt(roll.sides.replace(/\D/g,''))
-					roll.value = Random.range(1, max)
-					this.#DiceWorld.addNonDie(roll)
-				} else {
+                                        const max = Number.isInteger(roll.sides) ? roll.sides : parseInt(roll.sides.replace(/\D/g,''))
+                                        roll.value = notation.value ?? Random.range(1, max)
+                                        this.#DiceWorld.addNonDie(roll)
+                                } else {
 					let extendedTheme
 					if(diceExtra.includes(dieType)) {
 						const extendedThemeName = diceExtended[dieType]
